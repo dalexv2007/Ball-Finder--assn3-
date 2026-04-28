@@ -9,7 +9,7 @@ from rclpy.qos import qos_profile_sensor_data
 
 from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image, LaserScan
-from assn3.msg import BallLocation
+from ball_finder.msg import BallLocation
 
 
 class Robot(Node):
@@ -22,12 +22,14 @@ class Robot(Node):
         self.loc_publisher = self.create_publisher(BallLocation, '/ball_location', 10) #(type, topic, queue)
         self.im_publisher = self.create_publisher(Image, '/ball_image', 10) # publisher for modified image
         self.timer = self.create_timer(0.1, self.main_loop)
+
         self.create_subscription( #get image data from robot's camera
             Image,
             '/oakd/rgb/preview/image_raw',
             self.handle_image,
             qos_profile_sensor_data,
         )
+
         self.create_subscription( #get scan data from robot's lidar
             LaserScan,
             '/scan',
@@ -35,11 +37,11 @@ class Robot(Node):
             qos_profile_sensor_data,
         )
 
-    def handle_image(self, msg):
+    def handle_image(self, msg): #just stores raw image in self.raw_image by converting to OpenCV.
         try:
-            self.raw_image = self.bridge.imgmsg_to_cv2(msg, 'bgr8') #convert ROS image to OpenCV format
+            self.raw_image = self.bridge.imgmsg_to_cv2(msg, 'bgr8')
         except CvBridgeError:
-            print("Unable to convert ROS image to OpenCV format.") #error handler
+            print("Unable to convert ROS image to OpenCV format.")
 
     def handle_scan(self, msg): 
         self.ranges = msg.ranges # store scan data in self.ranges for use in main loop
@@ -50,10 +52,14 @@ class Robot(Node):
 
         image = self.raw_image.copy() #get image, use a copy to not modify original
         hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV) #convert image to hsv for filtering
+
         lower_yellow = np.array([20, 100, 100]) #set bounds for yellow color in hsv
         upper_yellow = np.array([30, 255, 255])
-        mask = cv2.inRange(hsv, lower_yellow, upper_yellow) #mask (binaryImage, lowBound, upBound), returns binary image where pixels in range are 255 and others are 0
 
+        mask = cv2.inRange(hsv, lower_yellow, upper_yellow) #mask (binaryImage, lowBound, upBound), returns binary image where pixels in range are 255 and others are 0
+        height, width = mask.shape
+        mask[0:int(0.2*height), :] = 0 #ignore top 20% of image to avoid ceiling
+        mask[int(0.8*height):, :] = 0 #ignore bottom 20% of image to avoid floor
 
         yellow_cols = np.where(mask == 255)[1] #get column indices of yellow pixels,
         ball_location = BallLocation() #ball_location = custom message of type BallLocation
@@ -64,13 +70,18 @@ class Robot(Node):
         else: #if pixels found...
             avg_x = int(np.mean(yellow_cols)) #calculate average column index of yellow pixels... this is the "center" of the ball in the image
             ball_location.bearing = avg_x #convert to bearing
-            scan_index = 335 - int(avg_x * 115 / 250) #convert avg_x to corresponding index in scan data (assuming 250 pixel width corresponds to 115 degree FOV of lidar, and lidar data is indexed from right to left)
+
+            scan_index = 335 - int(avg_x * 115 / 250)
+            scan_index = max(0, min(scan_index, len(self.ranges)-1)) #ensure scan index is within bounds of self.ranges
+
             distance = self.ranges[scan_index] #store distance for validity check
+
             if np.isnan(distance) or np.isinf(distance): #ensure distance is valid number, if not set to -1.0 to indicate invalid distance
                 ball_location.distance = -1.0
             else:
-                ball_location.distance = distance #if good, store distance in message
-            cv2.line(image, (avg_x, 0), (avg_x, image.shape[0]), (255, 0, 0), 2) #draw vertical blue line at avg_x to show ball center
+                ball_location.distance = float(distance) #if good, store distance in message casted to float
+
+            cv2.line(image, (avg_x, 0), (avg_x, height), (255, 0, 0), 2) #draw vertical blue line at avg_x to show ball center
 
         image[mask>0] = (0, 255, 0) #set yellow pixels in original image to bright yellow for visualization
 
