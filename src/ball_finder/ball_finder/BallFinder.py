@@ -57,6 +57,10 @@ class Robot(Node):
 
         mask = cv2.inRange(hsv, lower_yellow, upper_yellow) #mask (binaryImage, lowBound, upBound), returns binary image where pixels in range are 255 and others are 0
         height, width = mask.shape
+        center_x = width /2
+        hfov = 80
+        angle_offset = (center_x - avg_x) * (hfov / width) #calculate angle offset from center of image based on position of ball
+
         mask[0:int(0.2*height), :] = 0 #ignore top 20% of image to avoid ceiling
         mask[int(0.8*height):, :] = 0 #ignore bottom 20% of image to avoid floor
 
@@ -70,7 +74,7 @@ class Robot(Node):
             avg_x = int(np.mean(yellow_cols)) #calculate average column index of yellow pixels... this is the "center" of the ball in the image
             ball_location.bearing = avg_x #convert to bearing
 
-            scan_index = 335 - int(avg_x * 115 / 250)
+            scan_index = int(angle_offset) % len(self.ranges) #calculate corresponding index in lidar scan data based on angle offset, use modulo to wrap around if needed
             scan_index = max(0, min(scan_index, len(self.ranges)-1)) #ensure scan index is within bounds of self.ranges
 
             distance = self.ranges[scan_index] #store distance for validity check
