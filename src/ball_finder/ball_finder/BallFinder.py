@@ -17,10 +17,12 @@ class Robot(Node):
         self.bridge = CvBridge()
         self.raw_image = []
         self.ranges = []
+        self.distance_history = []
+        self.buffer_size = 8 #store most recent measurements
 
         self.loc_publisher = self.create_publisher(BallLocation, '/ball_location', 10) #(type, topic, queue)
         self.im_publisher = self.create_publisher(Image, '/ball_image', 10) # publisher for modified image
-        self.timer = self.create_timer(0.1, self.main_loop)
+        self.timer = self.create_timer(0.5, self.main_loop)
 
         self.create_subscription( #get image data from robot's camera
             Image,
@@ -61,7 +63,6 @@ class Robot(Node):
 
         height, width = mask.shape
         mask[0:int(0.2*height), :] = 0 #ignore top 20% of image to avoid ceiling
-        mask[int(0.8*height):, :] = 0 #ignore bottom 20% of image to avoid floor
 
         yellow_cols = np.where(mask == 255)[1] #get column indices of yellow pixels,
         ball_location = BallLocation() #ball_location = custom message of type BallLocation
@@ -84,7 +85,10 @@ class Robot(Node):
             if np.isnan(distance) or np.isinf(distance): #ensure distance is valid number, if not set to -1.0 to indicate invalid distance
                 ball_location.distance = -1.0
             else:
-                ball_location.distance = float(distance) #if good, store distance in message casted to float
+                self.distance_history.append(float(distance)) #add distance to history
+                if len(self.distance_history) > self.buffer_size: #if history exceeds buffer size, remove oldest measurement
+                    self.distance_history.pop(0)
+                ball_location.distance = np.mean(self.distance_history) #set distance to average of history for
 
             cv2.line(image, (avg_x, 0), (avg_x, height), (255, 0, 0), 2) #draw vertical blue line at avg_x to show ball center
 
