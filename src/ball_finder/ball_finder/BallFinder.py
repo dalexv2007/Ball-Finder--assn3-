@@ -56,7 +56,6 @@ class Robot(Node):
         upper_yellow = np.array([30, 255, 255])
 
         mask = cv2.inRange(hsv, lower_yellow, upper_yellow) #mask (binaryImage, lowBound, upBound), returns binary image where pixels in range are 255 and others are 0
-        center_x = width /2
         hfov = 80
 
         mask[0:int(0.2*height), :] = 0 #ignore top 20% of image to avoid ceiling
@@ -71,6 +70,7 @@ class Robot(Node):
         else: #if pixels found...
             avg_x = int(np.mean(yellow_cols)) #calculate average column index of yellow pixels... this is the "center" of the ball in the image
             height, width = mask.shape
+            center_x = width /2
             angle_offset = (center_x - avg_x) * (hfov / width) #calculate angle offset from center of image based on position of ball
 
             ball_location.bearing = avg_x #convert to bearing
