@@ -58,12 +58,12 @@ class Robot(Node):
         mask = cv2.inRange(hsv, lower_yellow, upper_yellow) #mask (binaryImage, lowBound, upBound), returns binary image where pixels in range are 255 and others are 0
         hfov = 80
 
+        height, width = mask.shape
         mask[0:int(0.2*height), :] = 0 #ignore top 20% of image to avoid ceiling
         mask[int(0.8*height):, :] = 0 #ignore bottom 20% of image to avoid floor
 
         yellow_cols = np.where(mask == 255)[1] #get column indices of yellow pixels,
         ball_location = BallLocation() #ball_location = custom message of type BallLocation
-        height, width = mask.shape
 
         if len(yellow_cols) == 0: #if no pixels found, set ball location to invalid values
             ball_location.bearing = -1
