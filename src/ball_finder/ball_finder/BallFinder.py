@@ -43,7 +43,8 @@ class Robot(Node):
             print("Unable to convert ROS image to OpenCV format.")
 
     def handle_scan(self, msg): 
-        self.ranges = msg.ranges # store scan data in self.ranges for use in main loop
+        self.scan_msg = msg # store msg in scan_msg
+        self.ranges = msg.ranges # store ranges in self.ranges for use in main loop
 
     def main_loop(self):
         if len(self.raw_image) == 0 or len(self.ranges) == 0: #if nothing received, dont run.
@@ -75,8 +76,8 @@ class Robot(Node):
 
             ball_location.bearing = avg_x #convert to bearing
 
-            scan_index = int(angle_offset) % len(self.ranges) #calculate corresponding index in lidar scan data based on angle offset, use modulo to wrap around if needed
-            scan_index = max(0, min(scan_index, len(self.ranges)-1)) #ensure scan index is within bounds of self.ranges
+            scan_index = 335 - int(avg_x * 115 / width)
+            scan_index = max(220, min(scan_index, 335))
 
             distance = self.ranges[scan_index] #store distance for validity check
 
