@@ -63,13 +63,13 @@ class Robot(Node):
 
         yellow_cols = np.where(mask == 255)[1] #get column indices of yellow pixels,
         ball_location = BallLocation() #ball_location = custom message of type BallLocation
+        height, width = mask.shape
 
         if len(yellow_cols) == 0: #if no pixels found, set ball location to invalid values
             ball_location.bearing = -1
             ball_location.distance = -1.0        
         else: #if pixels found...
             avg_x = int(np.mean(yellow_cols)) #calculate average column index of yellow pixels... this is the "center" of the ball in the image
-            height, width = mask.shape
             center_x = width /2
             angle_offset = (center_x - avg_x) * (hfov / width) #calculate angle offset from center of image based on position of ball
 
