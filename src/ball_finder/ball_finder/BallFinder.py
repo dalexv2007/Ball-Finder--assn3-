@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-from email.mime import image
 
 import rclpy
 import cv2
