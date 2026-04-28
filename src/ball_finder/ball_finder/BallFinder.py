@@ -77,7 +77,7 @@ class Robot(Node):
 
             ball_location.bearing = avg_x #convert to bearing
 
-            scan_index = 335 - int(avg_x * 115 / width)
+            scan_index = int(218 - avg_x*74/250)
             scan_index = max(220, min(scan_index, 335))
 
             distance = self.ranges[scan_index] #store distance for validity check
