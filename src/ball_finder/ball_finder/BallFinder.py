@@ -63,21 +63,24 @@ class Robot(Node):
 
         height, width = mask.shape
         mask[0:int(0.2*height), :] = 0 #ignore top 20% of image to avoid ceiling
+        mask[int(0.8*height):, :] = 0 #ignore bottom 20% of image to avoid floor
 
         yellow_cols = np.where(mask == 255)[1] #get column indices of yellow pixels,
         ball_location = BallLocation() #ball_location = custom message of type BallLocation
+        image_center = width / 2
 
         if len(yellow_cols) == 0: #if no pixels found, set ball location to invalid values
             ball_location.bearing = -1
             ball_location.distance = -1.0        
+            ball_location.found = False
+
         else: #if pixels found...
             avg_x = int(np.mean(yellow_cols)) #calculate average column index of yellow pixels... this is the "center" of the ball in the image
             center_x = width /2
-            angle_offset = (center_x - avg_x) * (hfov / width) #calculate angle offset from center of image based on position of ball
 
             ball_location.bearing = avg_x #convert to bearing
 
-            scan_index = int(223 - (avg_x * 74 / 250))
+            scan_index = int(223 - (avg_x * 76 / 250))
             scan_index = max(147, min(scan_index, 223))
 
             distance = self.ranges[scan_index] #store distance for validity check
@@ -91,6 +94,11 @@ class Robot(Node):
                 ball_location.distance = np.mean(self.distance_history) #set distance to average of history for
 
             cv2.line(image, (avg_x, 0), (avg_x, height), (255, 0, 0), 2) #draw vertical blue line at avg_x to show ball center
+
+            if ball_location.distance > 0: #if ball close to center, set as found
+                ball_location.found = True
+            else:
+                ball_location.found = False
 
         image[mask>0] = (0, 255, 0) #set yellow pixels in original image to bright yellow for visualization
 
